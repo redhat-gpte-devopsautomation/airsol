@@ -1,0 +1,166 @@
+apiVersion: batch/v1  
+kind: Job  
+metadata:  
+  name: restore-collection
+  annotations:  
+    argocd.argoproj.io/sync-wave: "3"  
+    argocd.argoproj.io/hook: Sync  
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation  
+spec:
+  backoffLimit: 4  
+  template:  
+    spec:  
+      initContainers:  
+      - name: wait-for-milvus-backup  
+        image: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest  
+        imagePullPolicy: IfNotPresent  
+        command: ["/bin/bash"]  
+        args:  
+        - -ec  
+        - |-  
+          echo "Waiting for milvus-backup pod in ic-shared-milvus namespace..."  
+          while ! nc -z milvus-backup.ic-shared-milvus.svc.cluster.local 8080; do  
+            echo -n '.'  
+            sleep 1  
+          done  
+          echo "Milvus-backup pod is running in ic-shared-milvus namespace."  
+      containers:  
+      - name: add-model  
+        image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:1.2  
+        imagePullPolicy: IfNotPresent  
+        command: ["/bin/bash"]  
+        args:  
+        - -ec  
+        - |-  
+          echo "Starting the model addition process..."  
+          
+          # Retrieve the backup from the S3 bucket  
+          echo "Downloading backup from GitHub..."  
+          curl -LO https://github.com/bhsingh1/sentiments/raw/dev/law-doc/backup.tar.gz  
+          echo "Backup downloaded. Extracting backup..."  
+          mkdir -p backup && tar xvzf backup.tar.gz -C ./backup || { echo "Error extracting the backup"; exit 1; }
+          
+          # Install required packages for PDF processing and embeddings generation  
+          echo "Installing required packages..."  
+          pip install --upgrade pip  # Update pip to the latest version
+          pip install -q pymilvus==2.3.7 PyPDF2 sentence-transformers boto3 || { echo "Package installation failed"; exit 1; }
+          echo "Packages installed successfully."
+          
+          # Start Python script
+          echo "Starting the Python script to process the PDF and generate embeddings..."  
+          cat << 'EOF' | python3 
+          import PyPDF2
+          from sentence_transformers import SentenceTransformer  
+          from pymilvus import MilvusClient, DataType, CollectionSchema, FieldSchema
+          import boto3
+          import sys
+
+          try:
+              # Connect to the object storage  
+              print("Connecting to S3 storage...")
+              s3 = boto3.client("s3",  
+                      endpoint_url="http://minio.ic-shared-minio.svc.cluster.local:9000",  
+                      aws_access_key_id="minio",  
+                      aws_secret_access_key="minio123")  
+              print("S3 storage connected successfully.")
+          except Exception as e:
+              print(f"Failed to connect to S3 storage: {e}", file=sys.stderr)
+              sys.exit(1)
+          
+          try:
+              # Path to the PDF file  
+              pdf_path = 'backup/guidance-document-on-baggage-standards-for-interline.pdf'  
+              print(f"Opening PDF file: {pdf_path}")  
+          
+              # Extract text from PDF using PyPDF2
+              with open(pdf_path, 'rb') as file:
+                  reader = PyPDF2.PdfReader(file)
+                  text = ''
+                  for page in reader.pages:
+                      text += page.extract_text()
+              print("Text extracted from PDF.")  
+          except Exception as e:
+              print(f"Failed to process PDF file: {e}", file=sys.stderr)
+              sys.exit(1)
+          
+          try:
+              # Generate embeddings  
+              print("Generating embeddings...")  
+              model = SentenceTransformer('all-MiniLM-L6-v2')  
+              embeddings = model.encode([text])  # Ensure 2D output for a single document  
+              print("Embeddings generated.")  
+          
+              # Convert embeddings to bytes  
+              embeddings_bytes = embeddings.tobytes()  
+              print("Embeddings converted to bytes.")  
+          
+              # Upload embeddings to MinIO  
+              print("Uploading embeddings to MinIO...")  
+              s3.put_object(Bucket="milvus-bucket", Key="embeddings/guidance-document-on-baggage-standards-for-interline.bin", Body=embeddings_bytes)  
+              print("Embeddings uploaded to MinIO.")  
+          
+              # Milvus client initialization  
+              print("Initializing Milvus client...")
+              client = MilvusClient(
+                  uri="http://vectordb-milvus.ic-shared-milvus.svc.cluster.local:19530",
+                  token="root:Milvus",
+                  db_name="default"
+              )
+              collection_name = 'guidance_document_on_baggage_standards'
+
+              # Define the collection schema with a primary key field
+              print("Defining collection schema...")
+              field1 = FieldSchema(
+                  name="id", 
+                  dtype=DataType.INT64, 
+                  is_primary=True,  # Set as primary key
+                  auto_id=True  # Automatically generate ID
+              )
+              field2 = FieldSchema(
+                  name="vector", 
+                  dtype=DataType.FLOAT_VECTOR, 
+                  dim=embeddings.shape[1]
+              )
+              field3 = FieldSchema(
+                  name="text", 
+                  dtype=DataType.VARCHAR, 
+                  max_length=2048
+              )
+              schema = CollectionSchema(fields=[field1, field2, field3], description="Guidance document collection")
+              
+              # Create collection if it does not exist
+              if not client.has_collection(collection_name):
+                  print(f"Collection '{collection_name}' does not exist. Creating collection...")
+                  client.create_collection(
+                      collection_name=collection_name, 
+                      schema=schema
+                  )
+                  print(f"Collection '{collection_name}' created successfully.")
+              
+              # Create the index
+              print("Creating index...")
+              index_params = client.prepare_index_params()
+
+              index_params.add_index(
+                  field_name="vector", 
+                  index_type="AUTOINDEX",
+                  metric_type="L2",
+                  params={}
+              )
+
+              client.create_index(
+                  collection_name=collection_name,
+                  index_params=index_params
+              )
+
+              client.load_collection(
+                  collection_name=collection_name
+              )
+              
+              print(f"Embeddings uploaded and inserted into Milvus collection '{collection_name}' successfully.")  
+          except Exception as e:
+              print(f"Failed during embedding or Milvus operations: {e}", file=sys.stderr)
+              sys.exit(1)
+          EOF
+          
+      restartPolicy: Never

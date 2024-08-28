@@ -1,0 +1,16 @@
+= Review of current claims processing
+include::_attributes.adoc[]
+:slide:
+
+* Baggage Claims can come in from multiple mediums:
+** email
+** fax
+** phone
+** web form
+* All formats will have to be transcribed into the web form for better uniformity
+
+* Baggage Claims have to be processed by (human) claims adjusters or remotely reviewed to ensure that the claims are genuine.
+* There are a lot of inefficiencies!
+** Adjusters report "workload-fatigue", i.e. making mistakes due to the repetitive nature of the work.
+** It also takes a long time to train new adjusters into the specific policies of the companies.
+** Encoding some of that tribal knowledge into a software product is highly desirable.

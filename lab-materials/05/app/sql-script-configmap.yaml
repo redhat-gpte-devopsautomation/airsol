@@ -1,0 +1,311 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sql-script-configmap
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  script.sql: |  
+    CREATE SCHEMA IF NOT EXISTS claims
+    AUTHORIZATION claimdb;
+
+    DROP TABLE IF EXISTS claims.claims CASCADE;
+    DROP TABLE IF EXISTS claims.original_images CASCADE;
+    DROP TABLE IF EXISTS claims.processed_images CASCADE;
+    DROP SEQUENCE IF EXISTS claims.claims_id_seq CASCADE;
+    DROP SEQUENCE IF EXISTS claims.original_images_id_seq CASCADE;
+    DROP SEQUENCE IF EXISTS claims.processed_images_id_seq CASCADE;
+
+    -- SEQUENCE: claims.claims_id_seq
+
+    CREATE SEQUENCE IF NOT EXISTS claims.claims_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 2147483647
+    CACHE 1;
+
+    -- Table: claims.claims
+
+    CREATE TABLE IF NOT EXISTS claims.claims
+    (
+        id integer NOT NULL DEFAULT nextval('claims.claims_id_seq'::regclass),
+        claim_number text COLLATE pg_catalog."default",
+        category text COLLATE pg_catalog."default",
+        policy_number text COLLATE pg_catalog."default",
+        client_name text COLLATE pg_catalog."default",
+        subject text COLLATE pg_catalog."default",
+        body text COLLATE pg_catalog."default",
+        summary text COLLATE pg_catalog."default",
+        location text COLLATE pg_catalog."default",
+        "time" text COLLATE pg_catalog."default",
+        sentiment text COLLATE pg_catalog."default",
+        CONSTRAINT claims_pkey PRIMARY KEY (id)
+    )
+    WITH (
+        OIDS = FALSE
+    )
+    TABLESPACE pg_default;
+
+    -- Link Table to Sequence    
+
+    ALTER SEQUENCE claims.claims_id_seq 
+        OWNED BY claims.claims.id;
+
+    -- SEQUENCE: claims.original_images_id_seq
+
+    CREATE SEQUENCE IF NOT EXISTS claims.original_images_id_seq
+        INCREMENT 1
+        START 1
+        MINVALUE 1
+        MAXVALUE 2147483647
+        CACHE 1;
+
+    -- Table: claims.original_images
+
+    CREATE TABLE IF NOT EXISTS claims.original_images
+    (
+        id integer NOT NULL DEFAULT nextval('claims.original_images_id_seq'::regclass),
+        image_name text COLLATE pg_catalog."default" NOT NULL,
+        image_key text COLLATE pg_catalog."default" NOT NULL,
+        claim_id integer NOT NULL,
+        CONSTRAINT original_images_pkey PRIMARY KEY (id),
+        CONSTRAINT fk_claim_id FOREIGN KEY (claim_id)
+            REFERENCES claims.claims (id) MATCH SIMPLE
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
+    )
+    WITH (
+        OIDS = FALSE
+    )
+    TABLESPACE pg_default;
+
+    -- Link Table to Sequence    
+
+    ALTER SEQUENCE claims.original_images_id_seq 
+        OWNED BY claims.original_images.id;
+
+    -- SEQUENCE: claims.processed_images_id_seq
+
+    CREATE SEQUENCE IF NOT EXISTS claims.processed_images_id_seq
+        INCREMENT 1
+        START 1
+        MINVALUE 1
+        MAXVALUE 2147483647
+        CACHE 1;
+
+    -- Table: claims.processed_images
+
+    CREATE TABLE IF NOT EXISTS claims.processed_images
+    (
+        id integer NOT NULL DEFAULT nextval('claims.processed_images_id_seq'::regclass),
+        image_name text COLLATE pg_catalog."default" NOT NULL,
+        image_key text COLLATE pg_catalog."default" NOT NULL,
+        claim_id integer NOT NULL,
+        CONSTRAINT processed_images_pkey PRIMARY KEY (id),
+        CONSTRAINT fk_claim_id FOREIGN KEY (claim_id)
+            REFERENCES claims.claims (id) MATCH SIMPLE
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
+    )
+    WITH (
+        OIDS = FALSE
+    )
+    TABLESPACE pg_default;
+
+    -- Link Table to Sequence    
+
+    ALTER SEQUENCE claims.processed_images_id_seq 
+        OWNED BY claims.processed_images.id;
+
+    -----
+    -- INSERTS
+    -----
+    -- CLAIM1
+
+    INSERT INTO claims.claims (claim_number, category, policy_number, client_name, subject, body, summary, location, time, sentiment) 
+    VALUES ('1', 'Refund', 'PNR-YBIRI7', 'Parth Sharma','Claim for Refund - PNR-YBIRI7', '
+    Hi Indigo Airlines,
+    
+    I hope this email finds you well. My name is Parth Sharma, and I am writing to file a claim for my flight from Mumbai to Delhi on March 31, 2024. My PNR is 9W5TY76.
+
+    at 12.20 PM from Mumbai to Gwalior and at 11.00 am, I am receiving a message that my flight has been cancelled and there are no other flights later in the day!!.\n\n Do you guys understand the importance of bookings? Can’t you keep few hours delay and arrange the flight? Stupid reasons for your inefficiency weather is now under controlled. In case the situation was
+
+    so worse it should have been informed to the passengers last night itself, so that they would made some arrangements or plan accordingly, just informing before 2 hours is highly irresponsible and passengers were already at the airport. The airport staff was rude and haggled the passengers unnecesarily. 
+
+        
+    Thank you for your assistance, and I look forward to a swift resolution of this claim.
+
+    Sincerely,
+
+    Parth Sharma
+    Gurgaon
+    DLF Phase 1,
+    (91) 9798909852
+    parth.sharma@gmail.com
+      
+    ',
+    '',
+    '',
+    '',
+    ''
+    );
+
+    -- CLAIM2
+
+    INSERT INTO claims.claims (claim_number, category, policy_number, client_name, subject, body, summary, location, time, sentiment) 
+    VALUES ('2', 'Damage', 'PNR-P52DKC', 'Alisha Aiyappa','Urgent: Unacceptable Damage of Backage with valuables', '
+    Hi Indigo,
+
+    I am writing to express my extreme dissatisfaction with the appalling service I have received on my last flight. This is regarding my baggage that got damaged during my flight from Guwahati to Delhi on July 2, 2024. 
+    
+    The luggage had my clothes and some luxury perfumes which broke. The suitcase is now completely damaged. To make matters worse, the on-ground staff refused to acknowledge the damage and said the suitcase was probably 
+    
+    broken before. I am sending a mail to the Ministry of Aviation as well regarding this. The entire experience is extremely dissapointing specially for someone who is a frequent flyer with Indigo since your inception days. 
+    
+    Please look into the same. I will personally make sure that neither me nor my family/friends will fly Indigo if no action is taken into this. 
+    
+    Sincerely, 
+    Alisha  
+    Bengaluru 
+    8899006633 
+    alishasingh@gmail.com
+    
+    ',
+    '',
+    '',
+    '',
+    ''
+    );
+
+    -- CLAIM3
+
+    INSERT INTO claims.claims (claim_number, category, policy_number, client_name, subject, body, summary, location, time, sentiment) 
+    VALUES ('3', 'Review', 'PNR-Z86PLW', 'Mohit Jain','Urgent: Great Service & Blue Tea in the Sky', '
+    Dear Indigo Airlines,
+
+    I hope this email finds you well.
+    
+    My name is Mohit Jain and I am wrtiting a small appreciation note for you people. Every time I fly Indigo, you people surprise me with a note and a little present. Almost to the point that if I don’t get one, it would be a surprise😜 
+    
+    This is not a flex but rather some observations I glean from experiences like this. A complementary sandwich & a juice are just what you need after a long day and shows customers how you care & makes them feel special. Indigo also brings out the letter and the gift on a 
+    
+    tray making it visible to others and sending a signal that celebs fly with us too. This builds the airlines’ aspirational positioning. While everything these days is snapped for social media, these little initiatives usually end up as a post as well, like this one. 
+    
+    So thanks once again for the fantastic service. Looking forward to flying again and having the Blue Tea again soon.
+
+    Sincerely,
+
+    Mohit Jain
+    
+    ',
+    '',
+    '',
+    '',
+    ''
+    );
+
+    -- CLAIM4
+
+    INSERT INTO claims.claims (claim_number, category, policy_number, client_name, subject, body, summary, location, time, sentiment) 
+    VALUES ('4', 'Review', 'PNR-SBI9P7', 'Vikram Singh','Appreciation Message', '
+    Dear Indigo,
+
+    My name is Vikram Singh and I am wrtiting a small appreciation note for you people. Every time I fly Indigo, you people surprise me with a note and a little present. Almost to the point that if I dont get one, it would be a surprise😜 
+    
+    This is not a flex but rather some observations I glean from experiences like this. A packet of chips & cookies cost nothing but it shows customers you care & makes them feel special. Indigo also brings out the letter and the gift 
+    
+    on a tray making it visible to others and sending a signal that celebs fly with us too. This builds the airlines’ aspirational positioning. While everything these days is snapped for social media, these little initiatives usually end up 
+    
+    as a post as well, like this one. 
+    
+    Sincerely, 
+    Vikram Singh  
+    Gurugram, Haryana 
+    vikramsingh@gmail.com" 
+   
+    ',
+    'The email is from a customer named Vikram Singh, appreciating the airlines. He describes his expereince as pleasant and one which made him really happy. Vikram expresses his confidence in Indigos ability to make a journey a pleasant experience',
+    'The event the claim is related to happened during an Indigo flight.',
+    'The event described calls out the airlines aspirational positioning.',
+    'The person sending the review is happy he received a packet of chips and cookies and a hand written note.'
+    );
+
+    -- CLAIM5
+
+    INSERT INTO claims.claims (claim_number, category, policy_number, client_name, subject, body, summary, location, time, sentiment) 
+    VALUES ('5', 'Review', 'PNR-L89P2T', 'Lavanya Singh', 'Meal not served, rude behaviour', '
+    
+    Hi Indigo,
+
+    I am absolutely *thrilled* (read: infuriated) to be writing yet another heartfelt missive to the void that is your customer service. I am writing to complaint a claim 
+    
+    for a recent flight I took from Bengaluru to Nashik. I caught the flight on June 9th, 2024, at  3:30 PM. My PNR number is L89P2T.\n\n I wanted to report about an incident that took 
+    
+    place during the flight. I had pre-ordered and paid for a Chicken Junglee sandwich. However, the cabin staff told that the Chicken Junglee Sandwich was out of stock and fhence provided me an alternate meal. 
+    
+    The meal provided to me was a box of cashews and some cookies. The cookies received were stale and out of date. When I asked for a replacement, I was told this is all they have and they cannot provide anything else. 
+    
+    Not even a complimentary drink. The entire experience was not at all pleasant and the rude behaviour of the staff on-board was just not acceptful. It is shameful that a airlines of this pedigree provides such an experience to its flyers. 
+    
+    Please look into the same. I will personally make sure that neither me nor my family/friends will fly Indigo if no action is taken into this. 
+    
+    Looking forward to an expedited resolution.
+    
+    Lavanya Singh 
+    Bengaluru 
+    9993388221 
+    lavanyasingh@gmail.com
+    
+    ',
+    'The text is a letter from a customer named Lavanya Singh to Indigo. She had pre-ordered and paid for a Chicken Junglee sandwich which was out of stock and the alternate meal cashews and some cookies were stale.',
+    'The event the claim is related to happened during a flight from Bengaluru to Nashik.',
+    'The incident as described in the text occurred on June 9th, 2024 at around 3:30 PM.',
+    'The sentiment of the person sending this claim is one of frustration and urgency. A delay in responding to them will ensure neither their family/friends will fly Indigo if no action taken.'
+    );
+
+    -- CLAIM6
+    
+    INSERT INTO claims.claims (claim_number, category, policy_number, client_name, subject, body, summary, location, time, sentiment) 
+    VALUES ('6', 'Refund', 'PNR-7B65AZ', 'Amit Pal', 'Last minute flight cancellation', '
+    Dear Indigo,
+
+    My name is Amit, and I am writing to complaint for flight booked today on Jun 20, 2024 at 12.20 PM from Mumbai to Gwalior and at 11.00 am, I am receiving a message that my flight has been cancelled 
+    
+    and there are no other flights later in the day!!.\n\n Do you guys understand the importance of bookings? Can’t you keep few hours delay and arrange the flight? Stupid reasons for your inefficiency weather is not under controll. 
+    
+    In case the situation was so worse it should have been informed to the passengers last night itself, so that they would made some arrangements or plan accordingly, just informing before 2 hours is highly irresponsible and passengers were 
+    
+    already at the airport. This is higly irresponsibile on part of the airlines and I shall file a complaint to the Ministry of Aviation as well regarding this. This is not how a Frequent Flyer of your airline desrves to be treated. Please make 
+
+    sure that the matter is duly looked into and the an appropriate action taken. I seek a refund and a COMPLETE one in this case for the experience I faced.
+    
+    Sincerely, 
+    Amit  
+    Nagpur, 
+    9965926239 
+    amitjainh@gmail.com
+    
+    ',
+    '',
+    '',
+    '',
+    ''
+    );
+
+    -- IMAGES
+
+    INSERT INTO claims.original_images (image_name, image_key, claim_id) VALUES ('car0.jpg', 'original_images/car0.jpg', 1);
+    INSERT INTO claims.original_images (image_name, image_key, claim_id) VALUES ('car1.jpg', 'original_images/car1.jpg', 1);
+    INSERT INTO claims.original_images (image_name, image_key, claim_id) VALUES ('car2.jpg', 'original_images/car2.jpg', 2);
+    INSERT INTO claims.original_images (image_name, image_key, claim_id) VALUES ('car3.jpg', 'original_images/car3.jpg', 3);
+    INSERT INTO claims.original_images (image_name, image_key, claim_id) VALUES ('car5.jpg', 'original_images/car5.jpg', 3);
+    INSERT INTO claims.original_images (image_name, image_key, claim_id) VALUES ('car6.jpg', 'original_images/car6.jpg', 3);
+    INSERT INTO claims.original_images (image_name, image_key, claim_id) VALUES ('car4.jpg', 'original_images/car4.jpg', 4);
+    INSERT INTO claims.processed_images (image_name, image_key, claim_id) VALUES ('car0-processed.jpg', 'processed_images/car0-processed.jpg', 1);
+    INSERT INTO claims.processed_images (image_name, image_key, claim_id) VALUES ('car1-processed.jpg', 'processed_images/car1-processed.jpg', 1);
+    INSERT INTO claims.processed_images (image_name, image_key, claim_id) VALUES ('car2-processed.jpg', 'processed_images/car2-processed.jpg', 2);
+    INSERT INTO claims.processed_images (image_name, image_key, claim_id) VALUES ('car3-processed.jpg', 'processed_images/car3-processed.jpg', 3);
+    INSERT INTO claims.processed_images (image_name, image_key, claim_id) VALUES ('car5-processed.jpg', 'processed_images/car5-processed.jpg', 3);
+    INSERT INTO claims.processed_images (image_name, image_key, claim_id) VALUES ('car6-processed.jpg', 'processed_images/car6-processed.jpg', 3);
+    INSERT INTO claims.processed_images (image_name, image_key, claim_id) VALUES ('car4-processed.jpg', 'processed_images/car4-processed.jpg', 4);

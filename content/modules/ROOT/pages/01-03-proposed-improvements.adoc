@@ -1,0 +1,20 @@
+= Proposed Improvements
+include::_attributes.adoc[]
+:slide:
+
+
+* Recommendations:
+** Progressive, step-wise, implementation
+** Use various AI/ML tools and techniques to **assist** the adjusters / remote adjusters
+** Provide support for low-level, repetitive tasks
+*** Point out areas in need of review
+*** Help with parsing and data extraction
+*** Reduce repetition fatigue
+* Goals:
+** Reduce average processing time  and understand customer sentiments
+** Reduce human error
+** Improve fraud detection
+* Requirements:
+** More precise measurements of performance:
+**** At baseline
+**** After every change/improvement
