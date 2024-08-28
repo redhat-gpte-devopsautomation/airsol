@@ -112,11 +112,3 @@ done
 - Make a pull request from this branch to `main`, review and merge
 
 </details>
-
-<details>
-  <summary>Links for Summit event environment assignment</summary>
-
-- URL for all labs: [https://one.demo.redhat.com/](https://one.demo.redhat.com/)
-- Search for `parasol`
-
-</details>

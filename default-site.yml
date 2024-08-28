@@ -1,5 +1,5 @@
 site:
-  title: "IndiGo AI Workshop: Sentiment Analysis and Baggage Claim!"
+  title: "AirSol AI Workshop: Sentiment Analysis and Baggage Claim!"
   url: https://redhat-scholars.github.io/course-template
   start_page: modules::index.adoc
 
@@ -9,7 +9,7 @@ ui:
   supplemental_files: ./content/supplemental-ui
 
 content:
-  edit_url: 'https://github.com/bhsingh1/sentiments/edit/dev/{path}'
+  edit_url: 'https://github.com/redhat-gpte-devopsautomation/airsol/edit/main/{path}'
   sources:
     - url: ./
       start_path: content
